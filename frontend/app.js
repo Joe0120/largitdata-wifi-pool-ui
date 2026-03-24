@@ -277,9 +277,13 @@ function updateCols() {
 // ============================================================
 // Screenshot polling
 // ============================================================
+const screenshotInFlight = new Set();
+
 async function loadScreenshot(serial) {
+  if (screenshotInFlight.has(serial)) return;
   const img = document.getElementById(`img-${serial}`);
   if (!img) return;
+  screenshotInFlight.add(serial);
   try {
     const resp = await fetch(`${API()}/api/devices/${serial}/screenshot?t=${Date.now()}`);
     if (!resp.ok) return;
@@ -291,6 +295,7 @@ async function loadScreenshot(serial) {
     const noSig = img.parentElement.querySelector('.no-signal');
     if (noSig) noSig.remove();
   } catch (e) {}
+  finally { screenshotInFlight.delete(serial); }
 }
 
 function startAutoRefresh() {
@@ -310,8 +315,7 @@ const actionPending = new Set();
 function actionRefresh(serial) {
   actionPending.add(serial);
   loadScreenshot(serial);
-  setTimeout(() => loadScreenshot(serial), 400);
-  setTimeout(() => { loadScreenshot(serial); actionPending.delete(serial); }, 900);
+  setTimeout(() => { loadScreenshot(serial); actionPending.delete(serial); }, 800);
 }
 
 // ============================================================

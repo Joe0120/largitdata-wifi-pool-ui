@@ -11,15 +11,11 @@ use crate::error::AppError;
 /// Embedded scrcpy server JAR
 const SCRCPY_JAR: &[u8] = include_bytes!("../../assets/scrcpy-server-v2.7.jar");
 
-/// Port counter for ADB forward (each session gets a unique local port)
-static NEXT_PORT: AtomicU16 = AtomicU16::new(27183);
+/// Port counter for scrcpy ADB forward (27183~29999)
+static SCRCPY_PORT_COUNTER: AtomicU16 = AtomicU16::new(0);
 
 fn next_port() -> u16 {
-    let port = NEXT_PORT.fetch_add(1, Ordering::Relaxed);
-    if port > 30000 {
-        NEXT_PORT.store(27183, Ordering::Relaxed);
-    }
-    port
+    27183 + (SCRCPY_PORT_COUNTER.fetch_add(1, Ordering::Relaxed) % 2817)
 }
 
 pub struct ScrcpySession {
@@ -40,12 +36,20 @@ impl ScrcpySession {
         let _ = adb.shell(serial, "pkill -f scrcpy").await;
         tokio::time::sleep(Duration::from_millis(300)).await;
 
-        // 1. Write JAR to a temp file and push to device
-        let tmp_jar = format!("/tmp/scrcpy-server-{serial}.jar");
-        tokio::fs::write(&tmp_jar, SCRCPY_JAR).await?;
-        adb.push_file(serial, &tmp_jar, "/data/local/tmp/scrcpy_server.jar")
-            .await?;
-        let _ = tokio::fs::remove_file(&tmp_jar).await;
+        // 1. Push JAR only if not already on device (or wrong size)
+        let check = adb.shell(serial, "wc -c < /data/local/tmp/scrcpy_server.jar").await;
+        let needs_push = match check {
+            Ok(output) => output.trim().parse::<usize>().unwrap_or(0) != SCRCPY_JAR.len(),
+            Err(_) => true,
+        };
+        if needs_push {
+            let tmp_jar = format!("/tmp/scrcpy-server-{serial}.jar");
+            tokio::fs::write(&tmp_jar, SCRCPY_JAR).await?;
+            adb.push_file(serial, &tmp_jar, "/data/local/tmp/scrcpy_server.jar")
+                .await?;
+            let _ = tokio::fs::remove_file(&tmp_jar).await;
+            tracing::debug!("Pushed scrcpy JAR to {serial}");
+        }
 
         // 2. Set up ADB forward
         let local_addr = format!("tcp:{local_port}");
@@ -83,10 +87,7 @@ impl ScrcpySession {
                 .await;
         });
 
-        // 4. Wait for scrcpy to start listening
-        tokio::time::sleep(Duration::from_secs(2)).await;
-
-        // 5. Connect TWO sockets to scrcpy:
+        // 4. Connect TWO sockets to scrcpy (connect_with_retry handles waiting):
         //    - First connect = video socket
         //    - Second connect = control socket
         //    scrcpy waits for both before sending handshake on video

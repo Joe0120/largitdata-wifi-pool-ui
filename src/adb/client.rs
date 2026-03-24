@@ -13,15 +13,11 @@ const ADB_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_CONCURRENT: usize = 50;
 const ATX_AGENT_PORT: u16 = 9008;
 
-/// Port counter for atx-agent forwards
-static NEXT_ATX_PORT: AtomicU16 = AtomicU16::new(17100);
+/// Port counter for atx-agent forwards (17100~17999)
+static ATX_PORT_COUNTER: AtomicU16 = AtomicU16::new(0);
 
 fn next_atx_port() -> u16 {
-    let port = NEXT_ATX_PORT.fetch_add(1, Ordering::Relaxed);
-    if port > 18000 {
-        NEXT_ATX_PORT.store(17100, Ordering::Relaxed);
-    }
-    port
+    17100 + (ATX_PORT_COUNTER.fetch_add(1, Ordering::Relaxed) % 900)
 }
 
 #[derive(Clone)]
@@ -189,8 +185,9 @@ impl AdbClient {
             .as_str()
             .ok_or_else(|| AppError::Adb("atx-agent returned no screenshot data".into()))?;
 
-        // atx-agent returns base64 with newlines — strip them before decoding
-        let cleaned: String = base64_str.chars().filter(|c| !c.is_whitespace()).collect();
+        // atx-agent returns base64 with newlines — strip in-place
+        let mut cleaned = base64_str.to_owned();
+        cleaned.retain(|c| !c.is_ascii_whitespace());
         use base64::Engine;
         let jpeg = base64::engine::general_purpose::STANDARD
             .decode(&cleaned)
