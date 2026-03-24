@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -13,6 +13,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/sim/current", get(current_sims))
         .route("/api/sim/switch", post(switch_sim))
         .route("/api/sim/switch-all", post(switch_all))
+        .route("/api/sim/switch-by-phone/{phone}", get(switch_by_phone))
 }
 
 async fn list_sim_devices(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
@@ -54,4 +55,30 @@ async fn switch_all(
 ) -> Result<impl IntoResponse, AppError> {
     let output = state.sim.switch_all(body.sim_order).await?;
     Ok(Json(serde_json::json!({"ok": true, "output": output})))
+}
+
+async fn switch_by_phone(
+    State(state): State<AppState>,
+    Path(phone): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let devices = state.sim.load_devices().await?;
+
+    for dev in &devices {
+        for card in &dev.card {
+            if card.phone_number == phone {
+                let sim_order = card.sim_order.as_u64()
+                    .ok_or_else(|| AppError::Sim("Invalid sim_order".into()))? as u32;
+                let output = state.sim.switch_device(&dev.device_id, sim_order).await?;
+                return Ok(Json(serde_json::json!({
+                    "ok": true,
+                    "device_id": dev.device_id,
+                    "sim_order": sim_order,
+                    "phone_number": phone,
+                    "output": output
+                })));
+            }
+        }
+    }
+
+    Err(AppError::NotFound(format!("Phone number {} not found", phone)))
 }

@@ -15,8 +15,6 @@
       <span>Largitdata WiFi Pool</span>
       <button id="sidebar-collapse-btn" onclick="toggleSidebar()">◀</button>
     </div>
-
-    <!-- Device selection -->
     <div class="sidebar-section">
       <h3>Devices</h3>
       <div class="sidebar-actions">
@@ -25,21 +23,6 @@
         <button onclick="startViewing()">View</button>
       </div>
       <div class="device-list" id="deviceList">Loading...</div>
-    </div>
-
-    <!-- SIM controls -->
-    <div class="sidebar-section">
-      <h3>SIM Switch</h3>
-      <div class="sim-controls">
-        <div class="row">
-          <select id="simOrder"></select>
-          <button onclick="switchAllSim()">Switch All</button>
-        </div>
-        <div class="row">
-          <button onclick="viewCurrentSim()">View Current</button>
-        </div>
-      </div>
-      <div class="sim-log" id="simLog"></div>
     </div>
   </div>
 
@@ -54,7 +37,52 @@
       <span class="val" id="colLabel">8</span>
       <button onclick="forcePortraitAll()">All Portrait</button>
       <button onclick="stopViewing()">Stop</button>
+
+      <div class="toolbar-spacer"></div>
+
+      <!-- SIM Switch Dropdown -->
+      <div class="dropdown" id="simDropdown">
+        <button class="dropdown-trigger" onclick="toggleDropdown('simDropdown')">SIM Switch ▾</button>
+        <div class="dropdown-menu dropdown-right" id="simDropdownMenu">
+          <div class="dropdown-section">
+            <input type="text" class="sim-search" id="simSearch" placeholder="Search phone..." oninput="onSimSearch()">
+            <div class="sim-search-results" id="simSearchResults"></div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-section">
+            <div class="dropdown-row">
+              <label>Group:</label>
+              <select id="simOrder" class="sim-el"></select>
+              <button onclick="switchAllSim()" class="sim-el dropdown-btn">Switch All</button>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-section">
+            <button onclick="viewCurrentSim()" class="sim-el dropdown-btn" style="width:100%">View Current</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notification Bell -->
+      <div class="dropdown" id="notifDropdown">
+        <button class="dropdown-trigger notif-bell" onclick="toggleDropdown('notifDropdown')">
+          🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="dropdown-menu dropdown-right notif-menu" id="notifDropdownMenu">
+          <div class="notif-header">
+            <span>Notifications</span>
+            <div class="notif-header-actions">
+              <button onclick="markAllRead()">All Read</button>
+              <button onclick="clearAllNotifs()">Clear</button>
+            </div>
+          </div>
+          <div class="notif-list" id="notifList">
+            <div class="notif-empty">No notifications</div>
+          </div>
+        </div>
+      </div>
     </div>
+
     <div id="grid"></div>
     <div id="statusbar">
       <span id="stDevices">Devices: -</span>
@@ -63,6 +91,10 @@
     </div>
   </div>
 </div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
 <script src="/app.js"></script>
 </body>
 </html>
