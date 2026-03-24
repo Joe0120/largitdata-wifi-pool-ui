@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Largitdata WiFi Pool</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-resizer"></div>
+    <div class="sidebar-header">
+      <span>Largitdata WiFi Pool</span>
+      <button id="sidebar-collapse-btn" onclick="toggleSidebar()">◀</button>
+    </div>
+
+    <!-- Device selection -->
+    <div class="sidebar-section">
+      <h3>Devices</h3>
+      <div class="sidebar-actions">
+        <button onclick="selectAll()">All</button>
+        <button onclick="selectNone()">None</button>
+        <button onclick="startViewing()">View</button>
+      </div>
+      <div class="device-list" id="deviceList">Loading...</div>
+    </div>
+
+    <!-- SIM controls -->
+    <div class="sidebar-section">
+      <h3>SIM Switch</h3>
+      <div class="sim-controls">
+        <div class="row">
+          <select id="simOrder"></select>
+          <button onclick="switchAllSim()">Switch All</button>
+        </div>
+        <div class="row">
+          <button onclick="viewCurrentSim()">View Current</button>
+        </div>
+      </div>
+      <div class="sim-log" id="simLog"></div>
+    </div>
+  </div>
+
+  <!-- Sidebar toggle -->
+  <button id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+
+  <!-- Main area -->
+  <div id="main">
+    <div id="toolbar">
+      <label>Columns:</label>
+      <input type="range" id="colSlider" min="1" max="10" value="8" oninput="updateCols()">
+      <span class="val" id="colLabel">8</span>
+      <button onclick="forcePortraitAll()">All Portrait</button>
+      <button onclick="stopViewing()">Stop</button>
+    </div>
+    <div id="grid"></div>
+    <div id="statusbar">
+      <span id="stDevices">Devices: -</span>
+      <span id="stViewing">Viewing: 0</span>
+      <span id="stInfo"></span>
+    </div>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
