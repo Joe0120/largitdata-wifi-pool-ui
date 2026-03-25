@@ -3,6 +3,7 @@ mod api;
 mod config;
 mod db;
 mod error;
+mod events;
 mod scrcpy;
 mod screenshot_cache;
 mod sim;
@@ -26,6 +27,7 @@ pub struct AppState {
     pub sim: SimManager,
     pub screenshots: ScreenshotCache,
     pub db: Database,
+    pub events: tokio::sync::broadcast::Sender<events::Event>,
 }
 
 #[tokio::main]
@@ -59,6 +61,9 @@ async fn main() {
         }
     }
 
+    // Broadcast channel for real-time events (SSE)
+    let (event_tx, _) = tokio::sync::broadcast::channel::<events::Event>(100);
+
     // Start background screenshot polling
     screenshots.clone().start_polling();
 
@@ -71,6 +76,7 @@ async fn main() {
         sim: SimManager::new(config.python_path, config.scripts_dir, config.device_phones_path),
         screenshots,
         db,
+        events: event_tx,
     };
 
     let app = api::router()

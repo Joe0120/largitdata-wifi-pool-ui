@@ -222,6 +222,17 @@ async fn receive_sms(
     Json(body): Json<NewSms>,
 ) -> Result<impl IntoResponse, AppError> {
     let id = state.db.insert_sms(&body).await?;
+
+    // Broadcast to all SSE clients
+    let _ = state.events.send(crate::events::Event::Sms(crate::events::SmsPayload {
+        id,
+        device_serial: body.device_serial.clone(),
+        phone_number: body.phone_number.clone(),
+        sender: body.sender.clone(),
+        body: body.body.clone(),
+        received_at: body.received_at.clone(),
+    }));
+
     Ok(Json(serde_json::json!({"ok": true, "id": id})))
 }
 

@@ -608,6 +608,29 @@ function toggleSidebar() {
 })();
 
 // ============================================================
+// SSE: real-time events from server
+// ============================================================
+function connectSSE() {
+  const es = new EventSource(`${API()}/api/events`);
+  es.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'Sms') {
+        const sms = data.payload;
+        const from = sms.sender || 'unknown';
+        const body = sms.body || '';
+        const phone = sms.phone_number || sms.device_serial;
+        toast(`SMS ${phone} ← ${from}: ${body}`, 'info');
+      }
+    } catch(err) {}
+  };
+  es.onerror = () => {
+    // EventSource auto-reconnects
+  };
+}
+
+// ============================================================
 // Boot
 // ============================================================
 init();
+connectSSE();

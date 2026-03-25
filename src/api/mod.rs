@@ -1,4 +1,5 @@
 pub mod devices;
+pub mod events;
 pub mod frontend;
 pub mod openapi;
 pub mod sim;
@@ -12,6 +13,7 @@ pub fn router() -> Router<AppState> {
         .merge(devices::router())
         .merge(stream::router())
         .merge(sim::router())
+        .merge(events::router())
         .merge(openapi::router())
         .merge(frontend::router())
 }
