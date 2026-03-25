@@ -39,6 +39,10 @@
 - SIM 切換成功自動更新裝置狀態
 - Tables：`devices`、`sim_cards`、`sms_messages`
 
+### API 文件
+- **Swagger UI**：`/swagger` — 互動式 API 文件，可直接測試所有 endpoint
+- **OpenAPI JSON**：`/api/openapi.json` — OpenAPI 3.0.3 spec
+
 ### 通知系統
 - **Toast**：右上角彈出通知，3 秒自動消失
 - **通知紀錄**：🔔 按鈕展開歷史紀錄，可標記已讀/全部已讀/清除
