@@ -17,7 +17,7 @@ pub struct SmsRow {
 
 #[derive(Debug, Deserialize)]
 pub struct NewSms {
-    pub device_id: String,
+    pub device_id: Option<String>,
     pub phone_number: Option<String>,
     pub sender: Option<String>,
     pub body: Option<String>,

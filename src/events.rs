@@ -9,7 +9,7 @@ pub enum Event {
 #[derive(Clone, Debug, Serialize)]
 pub struct SmsPayload {
     pub id: i64,
-    pub device_id: String,
+    pub device_id: Option<String>,
     pub phone_number: Option<String>,
     pub sender: Option<String>,
     pub body: Option<String>,
