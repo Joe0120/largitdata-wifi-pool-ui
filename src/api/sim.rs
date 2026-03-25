@@ -71,7 +71,7 @@ async fn sync_all(State(state): State<AppState>) -> Result<impl IntoResponse, Ap
                 // Find phone_number from sim_cards by app_lable
                 let conn = state.db.conn().lock().await;
                 let result = conn.query_row(
-                    "SELECT phone_number, app_order FROM sim_cards WHERE device_serial = ?1 AND app_lable = ?2",
+                    "SELECT phone_number, app_order FROM sim_cards WHERE device_id = ?1 AND app_lable = ?2",
                     rusqlite::params![device_id, current_lable],
                     |row| Ok((row.get::<_, String>(0).ok(), row.get::<_, i32>(1).ok())),
                 );
@@ -116,7 +116,7 @@ async fn switch_sim(
         // Find phone_number for this app_order
         let conn = state.db.conn().lock().await;
         let phone = conn.query_row(
-            "SELECT phone_number FROM sim_cards WHERE device_serial = ?1 AND app_order = ?2",
+            "SELECT phone_number FROM sim_cards WHERE device_id = ?1 AND app_order = ?2",
             rusqlite::params![device_id, body.app_order],
             |row| row.get::<_, String>(0),
         ).ok();
@@ -153,7 +153,7 @@ async fn switch_all(
                     let device_id = &serial[..idx];
                     let conn = state.db.conn().lock().await;
                     let phone = conn.query_row(
-                        "SELECT phone_number FROM sim_cards WHERE device_serial = ?1 AND app_order = ?2",
+                        "SELECT phone_number FROM sim_cards WHERE device_id = ?1 AND app_order = ?2",
                         rusqlite::params![device_id, body.app_order],
                         |row| row.get::<_, String>(0),
                     ).ok();
@@ -226,7 +226,7 @@ async fn receive_sms(
     // Broadcast to all SSE clients
     let _ = state.events.send(crate::events::Event::Sms(crate::events::SmsPayload {
         id,
-        device_serial: body.device_serial.clone(),
+        device_id: body.device_id.clone(),
         phone_number: body.phone_number.clone(),
         sender: body.sender.clone(),
         body: body.body.clone(),

@@ -247,15 +247,15 @@ async fn openapi_json() -> impl IntoResponse {
                 "PhoneStatus": {
                     "type": "object",
                     "properties": {
-                        "phone_number": {"type": "string"}, "device_serial": {"type": "string"},
+                        "phone_number": {"type": "string"}, "device_id": {"type": "string"},
                         "app_order": {"type": "integer"}, "is_active": {"type": "boolean"},
                         "current_phone": {"type": "string", "nullable": true}
                     }
                 },
                 "NewSms": {
-                    "type": "object", "required": ["device_serial"],
+                    "type": "object", "required": ["device_id"],
                     "properties": {
-                        "device_serial": {"type": "string"}, "phone_number": {"type": "string"},
+                        "device_id": {"type": "string"}, "phone_number": {"type": "string"},
                         "sender": {"type": "string"}, "body": {"type": "string"},
                         "received_at": {"type": "string", "format": "date-time"}
                     }
@@ -263,7 +263,7 @@ async fn openapi_json() -> impl IntoResponse {
                 "SmsMessage": {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "integer"}, "device_serial": {"type": "string"},
+                        "id": {"type": "integer"}, "device_id": {"type": "string"},
                         "phone_number": {"type": "string"}, "sender": {"type": "string"},
                         "body": {"type": "string"}, "received_at": {"type": "string"},
                         "created_at": {"type": "string"}

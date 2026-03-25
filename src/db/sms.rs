@@ -7,7 +7,7 @@ use crate::error::AppError;
 #[derive(Debug, Serialize)]
 pub struct SmsRow {
     pub id: i64,
-    pub device_serial: String,
+    pub device_id: String,
     pub phone_number: Option<String>,
     pub sender: Option<String>,
     pub body: Option<String>,
@@ -17,7 +17,7 @@ pub struct SmsRow {
 
 #[derive(Debug, Deserialize)]
 pub struct NewSms {
-    pub device_serial: String,
+    pub device_id: String,
     pub phone_number: Option<String>,
     pub sender: Option<String>,
     pub body: Option<String>,
@@ -29,9 +29,9 @@ impl Database {
     pub async fn insert_sms(&self, sms: &NewSms) -> Result<i64, AppError> {
         let conn = self.conn.lock().await;
         conn.execute(
-            "INSERT INTO sms_messages (device_serial, phone_number, sender, body, received_at)
+            "INSERT INTO sms_messages (device_id, phone_number, sender, body, received_at)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![sms.device_serial, sms.phone_number, sms.sender, sms.body, sms.received_at],
+            params![sms.device_id, sms.phone_number, sms.sender, sms.body, sms.received_at],
         )
         .map_err(|e| AppError::Adb(format!("DB insert sms failed: {e}")))?;
         Ok(conn.last_insert_rowid())
@@ -46,7 +46,7 @@ impl Database {
         let conn = self.conn.lock().await;
         let mut stmt = conn
             .prepare(
-                "SELECT id, device_serial, phone_number, sender, body, received_at, created_at
+                "SELECT id, device_id, phone_number, sender, body, received_at, created_at
                  FROM sms_messages
                  WHERE phone_number = ?1
                  ORDER BY id DESC
@@ -58,7 +58,7 @@ impl Database {
             .query_map(params![phone, limit], |row| {
                 Ok(SmsRow {
                     id: row.get(0)?,
-                    device_serial: row.get(1)?,
+                    device_id: row.get(1)?,
                     phone_number: row.get(2)?,
                     sender: row.get(3)?,
                     body: row.get(4)?,

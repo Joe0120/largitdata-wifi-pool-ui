@@ -131,7 +131,7 @@ journalctl --user -u largitdata-wifi-pool-ui -f    # 看 log
 
 | Method | Path | 說明 | Body |
 |--------|------|------|------|
-| POST | `/api/sms` | 手機轉發簡訊（同時推播 SSE） | `{"device_serial":"xxx","phone_number":"886...","sender":"...","body":"...","received_at":"..."}` |
+| POST | `/api/sms` | 手機轉發簡訊（同時推播 SSE） | `{"device_id":"xxx","phone_number":"886...","sender":"...","body":"...","received_at":"..."}` |
 | GET | `/api/sms/{phone}?limit=5` | 查詢指定號碼簡訊（預設最新 5 則） | - |
 
 ### 即時推播
@@ -142,7 +142,7 @@ journalctl --user -u largitdata-wifi-pool-ui -f    # 看 log
 
 SSE event 格式：
 ```json
-data: {"type":"Sms","payload":{"id":1,"device_serial":"R38M605CSEH","phone_number":"886933246524","sender":"0912345678","body":"Hello","received_at":"..."}}
+data: {"type":"Sms","payload":{"id":1,"device_id":"R38M605CSEH","phone_number":"886933246524","sender":"0912345678","body":"Hello","received_at":"..."}}
 ```
 
 ---

@@ -619,7 +619,7 @@ function connectSSE() {
         const sms = data.payload;
         const from = sms.sender || 'unknown';
         const body = sms.body || '';
-        const phone = sms.phone_number || sms.device_serial;
+        const phone = sms.phone_number || sms.device_id;
         toast(`SMS ${phone} ← ${from}: ${body}`, 'info');
       }
     } catch(err) {}
