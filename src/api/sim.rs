@@ -219,8 +219,63 @@ async fn switch_by_phone(
 
 async fn receive_sms(
     State(state): State<AppState>,
-    Json(body): Json<NewSms>,
+    Json(mut body): Json<NewSms>,
 ) -> Result<impl IntoResponse, AppError> {
+    // If body contains raw message, parse it
+    // Format:
+    //   line 1: sender
+    //   line 2~: message content (until "Receiver:" line)
+    //   Receiver: {app_lable}
+    //   next line: ignored
+    //   next line: datetime
+    //   last line: ignored
+    if let Some(raw) = &body.body {
+        let lines: Vec<&str> = raw.lines().collect();
+        if lines.len() >= 5 {
+            // Check if any line starts with "Receiver:"
+            if let Some(recv_idx) = lines.iter().position(|l| l.starts_with("Receiver:")) {
+                // sender = first line
+                if body.sender.is_none() {
+                    body.sender = Some(lines[0].trim().to_string());
+                }
+
+                // message content = lines between sender and Receiver
+                let content = lines[1..recv_idx].join("\n");
+
+                // app_lable from "Receiver: XXXXX"
+                let app_lable = lines[recv_idx]
+                    .strip_prefix("Receiver:")
+                    .unwrap_or("")
+                    .trim();
+
+                // datetime = 2 lines after Receiver
+                if recv_idx + 2 < lines.len() && body.received_at.is_none() {
+                    body.received_at = Some(lines[recv_idx + 2].trim().to_string());
+                }
+
+                // Lookup app_lable in DB → get device_id and phone_number
+                if !app_lable.is_empty() {
+                    let conn = state.db.conn().lock().await;
+                    let result = conn.query_row(
+                        "SELECT device_id, phone_number FROM sim_cards WHERE app_lable = ?1",
+                        rusqlite::params![app_lable],
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    );
+                    drop(conn);
+
+                    if let Ok((device_id, phone_number)) = result {
+                        body.device_id = Some(device_id);
+                        body.phone_number = Some(phone_number);
+                    }
+                }
+
+                // Store parsed content as body, keep raw in raw_body
+                body.raw_body = body.body.clone();
+                body.body = Some(content);
+            }
+        }
+    }
+
     let id = state.db.insert_sms(&body).await?;
 
     // Broadcast to all SSE clients

@@ -30,10 +30,11 @@ pub async fn run(db: &Database) -> Result<(), AppError> {
 
         CREATE TABLE IF NOT EXISTS sms_messages (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            device_id   TEXT NOT NULL,
+            device_id       TEXT,
             phone_number    TEXT,
             sender          TEXT,
             body            TEXT,
+            raw_body        TEXT,
             received_at     TEXT,
             created_at      TEXT DEFAULT (datetime('now'))
         );

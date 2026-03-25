@@ -7,7 +7,7 @@ use crate::error::AppError;
 #[derive(Debug, Serialize)]
 pub struct SmsRow {
     pub id: i64,
-    pub device_id: String,
+    pub device_id: Option<String>,
     pub phone_number: Option<String>,
     pub sender: Option<String>,
     pub body: Option<String>,
@@ -22,6 +22,8 @@ pub struct NewSms {
     pub sender: Option<String>,
     pub body: Option<String>,
     pub received_at: Option<String>,
+    #[serde(default)]
+    pub raw_body: Option<String>,
 }
 
 impl Database {
@@ -29,9 +31,9 @@ impl Database {
     pub async fn insert_sms(&self, sms: &NewSms) -> Result<i64, AppError> {
         let conn = self.conn.lock().await;
         conn.execute(
-            "INSERT INTO sms_messages (device_id, phone_number, sender, body, received_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![sms.device_id, sms.phone_number, sms.sender, sms.body, sms.received_at],
+            "INSERT INTO sms_messages (device_id, phone_number, sender, body, raw_body, received_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![sms.device_id, sms.phone_number, sms.sender, sms.body, sms.raw_body, sms.received_at],
         )
         .map_err(|e| AppError::Adb(format!("DB insert sms failed: {e}")))?;
         Ok(conn.last_insert_rowid())
