@@ -30,8 +30,13 @@ async fn screenshot(
     State(state): State<AppState>,
     Path(serial): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let data = state.adb.screenshot(&serial).await?;
-    // Detect format: JPEG starts with FF D8, PNG starts with 89 50
+    // Try cache first (populated by background polling task)
+    let data = if let Some(cached) = state.screenshots.get(&serial).await {
+        cached
+    } else {
+        // Cache miss — take screenshot directly (first request or new device)
+        state.adb.screenshot(&serial).await?
+    };
     let mime = if data.len() > 2 && data[0] == 0xFF && data[1] == 0xD8 {
         "image/jpeg"
     } else {

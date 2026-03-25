@@ -302,13 +302,22 @@ function startAutoRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
   const serials = [...viewingSerials];
   if (serials.length === 0) return;
-  let idx = 0;
-  const interval = 200;
+
+  // Batch: 5 devices at a time, staggered every 200ms
+  // Chrome limits 6 concurrent connections per host
+  const BATCH_SIZE = 5;
+  const BATCH_INTERVAL = 200;
+  let batchIdx = 0;
+
   refreshTimer = setInterval(() => {
-    if (idx >= serials.length) idx = 0;
-    if (!actionPending.has(serials[idx])) loadScreenshot(serials[idx]);
-    idx++;
-  }, interval);
+    const start = batchIdx * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, serials.length);
+    for (let i = start; i < end; i++) {
+      if (!actionPending.has(serials[i])) loadScreenshot(serials[i]);
+    }
+    batchIdx++;
+    if (batchIdx * BATCH_SIZE >= serials.length) batchIdx = 0;
+  }, BATCH_INTERVAL);
 }
 
 const actionPending = new Set();

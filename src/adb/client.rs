@@ -185,7 +185,6 @@ impl AdbClient {
             .as_str()
             .ok_or_else(|| AppError::Adb("atx-agent returned no screenshot data".into()))?;
 
-        // atx-agent returns base64 with newlines — strip in-place
         let mut cleaned = base64_str.to_owned();
         cleaned.retain(|c| !c.is_ascii_whitespace());
         use base64::Engine;
