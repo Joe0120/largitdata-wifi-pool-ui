@@ -99,6 +99,19 @@ impl AdbClient {
         }
     }
 
+    /// Run ADB command without semaphore (for quick internal ops)
+    pub async fn run_raw(&self, args: &[&str]) -> Result<Vec<u8>, AppError> {
+        let output = Command::new(&self.adb_path)
+            .args(args)
+            .output()
+            .await?;
+        if output.status.success() {
+            Ok(output.stdout)
+        } else {
+            Err(AppError::Adb(format!("adb {} failed", args.join(" "))))
+        }
+    }
+
     async fn run_text(&self, args: &[&str]) -> Result<String, AppError> {
         let bytes = self.run(args).await?;
         Ok(String::from_utf8_lossy(&bytes).into_owned())

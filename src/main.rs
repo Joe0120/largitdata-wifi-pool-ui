@@ -32,11 +32,15 @@ async fn main() {
         .init();
 
     let config = Config::from_env();
+    let port = config.port;
     let adb = AdbClient::new(config.adb_path);
     let screenshots = ScreenshotCache::new(adb.clone());
 
     // Start background screenshot polling
     screenshots.clone().start_polling();
+
+    // Setup adb reverse on all devices so they can reach this server
+    setup_adb_reverse(adb.clone(), port);
 
     let state = AppState {
         scrcpy: SessionManager::new(adb.clone()),
@@ -54,4 +58,34 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+/// Background task: set `adb reverse tcp:{port} tcp:{port}` on all devices.
+/// Re-checks every 30s to catch newly connected devices.
+fn setup_adb_reverse(adb: AdbClient, port: u16) {
+    let local = format!("tcp:{port}");
+    let remote = format!("tcp:{port}");
+    tokio::spawn(async move {
+        let mut known: std::collections::HashSet<String> = std::collections::HashSet::new();
+        loop {
+            if let Ok(devices) = adb.list_devices().await {
+                for dev in &devices {
+                    if known.contains(&dev.serial) {
+                        continue;
+                    }
+                    let args = ["-s", &dev.serial, "reverse", &local, &remote];
+                    match adb.run_raw(&args).await {
+                        Ok(_) => {
+                            tracing::info!("adb reverse set for {} → tcp:{}", dev.serial, port);
+                            known.insert(dev.serial.clone());
+                        }
+                        Err(e) => {
+                            tracing::warn!("adb reverse failed for {}: {e}", dev.serial);
+                        }
+                    }
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        }
+    });
 }
