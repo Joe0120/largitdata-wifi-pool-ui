@@ -105,8 +105,8 @@ def get_current_number(numbers):
     return None
 
 
-def switch_device(device_id, app_lable, sim_order, total_cards):
-    """切換單台裝置，回傳結果字串"""
+def switch_device(device_id, app_lable, app_order, total_cards):
+    """切換單台裝置，點擊後驗證是否真的切換成功"""
     try:
         d = u2.connect(device_id)
         d.implicitly_wait(3)
@@ -116,10 +116,22 @@ def switch_device(device_id, app_lable, sim_order, total_cards):
         time.sleep(1)
 
         target = app_lable
-        if find_and_click_number(d, target):
-            return f"[OK] {device_id} | 切換到 sim_order={sim_order} ({target})"
-        else:
+        if not find_and_click_number(d, target):
             return f"[FAIL] {device_id} | 找不到 {target}"
+
+        # 等待切換生效
+        time.sleep(3)
+
+        # 驗證：重新開 STK 檢查目標號碼是否變成 active (有 * 前綴)
+        open_stk(d)
+        enter_switch_menu(d)
+        numbers = collect_numbers(d)
+
+        current = get_current_number(numbers)
+        if current and target in current:
+            return f"[OK] {device_id} | 切換成功 app_order={app_order} ({target}) 目前: {current}"
+        else:
+            return f"[FAIL] {device_id} | 點擊了 {target} 但目前是 {current or '未知'}"
 
     except Exception as e:
         return f"[ERROR] {device_id} | {e}"
@@ -141,7 +153,7 @@ def get_current_all(device_id):
 
 def main():
     parser = argparse.ArgumentParser(description="批次切換所有裝置的卡多宝號碼")
-    parser.add_argument("sim_order", nargs="?", type=int, help="要切換到第幾個號碼 (sim_order)")
+    parser.add_argument("app_order", nargs="?", type=int, help="要切換到第幾個號碼 (app_order)")
     parser.add_argument("--current", action="store_true", help="查看所有裝置目前號碼")
     args = parser.parse_args()
 
@@ -155,12 +167,12 @@ def main():
                 print(future.result())
         return
 
-    if not args.sim_order:
+    if not args.app_order:
         parser.print_help()
         return
 
-    target_order = args.sim_order
-    print(f"目標: 所有裝置切換到 sim_order={target_order}\n")
+    target_order = args.app_order
+    print(f"目標: 所有裝置切換到 app_order={target_order}\n")
 
     # 建立每台裝置要切換的目標
     tasks = []
@@ -168,25 +180,25 @@ def main():
         cards = device["card"]
         total = len(cards)
 
-        # 找到對應 sim_order 的 card
+        # 找到對應 app_order 的 card
         target_card = None
         for card in cards:
-            if card["sim_order"] == target_order:
+            if card["app_order"] == target_order:
                 target_card = card
                 break
 
         if not target_card:
-            print(f"[SKIP] {device['device_id']} | 只有 {total} 個號碼，沒有 sim_order={target_order}")
+            print(f"[SKIP] {device['device_id']} | 只有 {total} 個號碼，沒有 app_order={target_order}")
             continue
 
         if not target_card["phone_number"]:
-            print(f"[SKIP] {device['device_id']} | sim_order={target_order} 沒有 phone_number")
+            print(f"[SKIP] {device['device_id']} | app_order={target_order} 沒有 phone_number")
             continue
 
         tasks.append({
             "device_id": device["device_id"],
             "app_lable": target_card["app_lable"],
-            "sim_order": target_order,
+            "app_order": target_order,
             "total_cards": total,
         })
 
@@ -202,7 +214,7 @@ def main():
                 switch_device,
                 t["device_id"],
                 t["app_lable"],
-                t["sim_order"],
+                t["app_order"],
                 t["total_cards"],
             ): t
             for t in tasks

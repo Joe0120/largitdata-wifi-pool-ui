@@ -29,7 +29,7 @@ async fn current_sims(State(state): State<AppState>) -> Result<impl IntoResponse
 #[derive(Deserialize)]
 struct SwitchRequest {
     device_id: Option<String>,
-    sim_order: u32,
+    app_order: u32,
 }
 
 async fn switch_sim(
@@ -40,21 +40,43 @@ async fn switch_sim(
         .device_id
         .as_ref()
         .ok_or_else(|| AppError::Sim("device_id is required".into()))?;
-    let output = state.sim.switch_device(device_id, body.sim_order).await?;
+    let output = state.sim.switch_device(device_id, body.app_order).await?;
     Ok(Json(serde_json::json!({"ok": true, "output": output})))
 }
 
 #[derive(Deserialize)]
 struct SwitchAllRequest {
-    sim_order: u32,
+    app_order: u32,
 }
 
 async fn switch_all(
     State(state): State<AppState>,
     Json(body): Json<SwitchAllRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let output = state.sim.switch_all(body.sim_order).await?;
-    Ok(Json(serde_json::json!({"ok": true, "output": output})))
+    let output = state.sim.switch_all(body.app_order).await?;
+
+    let mut results = Vec::new();
+    for line in output.lines() {
+        if line.starts_with("[OK]") {
+            results.push(serde_json::json!({"status": "ok", "message": line}));
+        } else if line.starts_with("[FAIL]") {
+            results.push(serde_json::json!({"status": "fail", "message": line}));
+        } else if line.starts_with("[ERROR]") {
+            results.push(serde_json::json!({"status": "error", "message": line}));
+        } else if line.starts_with("[SKIP]") {
+            results.push(serde_json::json!({"status": "skip", "message": line}));
+        }
+    }
+
+    let ok_count = results.iter().filter(|r| r["status"] == "ok").count();
+    let fail_count = results.iter().filter(|r| r["status"] != "ok" && r["status"] != "skip").count();
+
+    Ok(Json(serde_json::json!({
+        "ok": fail_count == 0 && ok_count > 0,
+        "success": ok_count,
+        "failed": fail_count,
+        "results": results,
+    })))
 }
 
 async fn switch_by_phone(
@@ -66,13 +88,13 @@ async fn switch_by_phone(
     for dev in &devices {
         for card in &dev.card {
             if card.phone_number == phone {
-                let sim_order = card.sim_order.as_u64()
-                    .ok_or_else(|| AppError::Sim("Invalid sim_order".into()))? as u32;
-                let output = state.sim.switch_device(&dev.device_id, sim_order).await?;
+                let app_order = card.app_order.as_u64()
+                    .ok_or_else(|| AppError::Sim("Invalid app_order".into()))? as u32;
+                let output = state.sim.switch_device(&dev.device_id, app_order).await?;
                 return Ok(Json(serde_json::json!({
                     "ok": true,
                     "device_id": dev.device_id,
-                    "sim_order": sim_order,
+                    "app_order": app_order,
                     "phone_number": phone,
                     "output": output
                 })));

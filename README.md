@@ -175,7 +175,7 @@ Body：
         "phone_number": "886933246524",
         "app_lable": "01933246524",
         "sim_number": "3LK21CT007324",
-        "sim_order": 1
+        "app_order": 1
       }
     ]
   }
@@ -195,7 +195,7 @@ Body：
 
 Body：
 ```json
-{ "sim_order": 5 }
+{ "app_order": 5 }
 ```
 
 #### `POST /api/sim/switch`
@@ -203,7 +203,7 @@ Body：
 
 Body：
 ```json
-{ "device_id": "03157df34dcc1e3a", "sim_order": 5 }
+{ "device_id": "03157df34dcc1e3a", "app_order": 5 }
 ```
 
 #### `GET /api/sim/switch-by-phone/{phone_number}`
@@ -219,7 +219,7 @@ GET /api/sim/switch-by-phone/886905349387
 {
   "ok": true,
   "device_id": "03157df3c91de513",
-  "sim_order": 3,
+  "app_order": 3,
   "phone_number": "886905349387",
   "output": "..."
 }

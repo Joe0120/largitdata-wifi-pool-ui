@@ -174,8 +174,8 @@ function mouseToRatio(e, img)      // 滑鼠位置 → 0~1 比例座標
 
 ### SIM 切換 Python 腳本
 - 位置: `/home/largitdata/project/sim_switch_api/`
-- `switch_phone_number.py {device_id} --index {sim_order}` — 單台切換
-- `switch_all_devices.py {sim_order}` — 全部切換
+- `switch_phone_number.py {device_id} --index {app_order}` — 單台切換
+- `switch_all_devices.py {app_order}` — 全部切換
 - `switch_all_devices.py --current` — 查詢目前號碼
 - 透過 uiautomator2 操控 STK app UI 完成切換
 - `device_phones.json` — 裝置與號碼對照表

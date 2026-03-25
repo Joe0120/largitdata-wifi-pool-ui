@@ -50,11 +50,11 @@ impl SimManager {
         Ok(stdout)
     }
 
-    pub async fn switch_all(&self, sim_order: u32) -> Result<String, AppError> {
+    pub async fn switch_all(&self, app_order: u32) -> Result<String, AppError> {
         let script = self.scripts_dir.join("switch_all_devices.py");
         let output = Command::new(&self.python_path)
             .arg(&script)
-            .arg(sim_order.to_string())
+            .arg(app_order.to_string())
             .current_dir(&self.scripts_dir)
             .output()
             .await
@@ -70,13 +70,13 @@ impl SimManager {
         Ok(stdout)
     }
 
-    pub async fn switch_device(&self, device_id: &str, sim_order: u32) -> Result<String, AppError> {
+    pub async fn switch_device(&self, device_id: &str, app_order: u32) -> Result<String, AppError> {
         let script = self.scripts_dir.join("switch_phone_number.py");
         let output = Command::new(&self.python_path)
             .arg(&script)
             .arg(device_id)
             .arg("--index")
-            .arg(sim_order.to_string())
+            .arg(app_order.to_string())
             .current_dir(&self.scripts_dir)
             .output()
             .await

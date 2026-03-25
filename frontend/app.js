@@ -486,7 +486,7 @@ function onSimSearch() {
   for (const dev of simDevices) {
     for (const card of dev.card) {
       if (card.phone_number && card.phone_number.includes(q)) {
-        results.push({ phone: card.phone_number, device_id: dev.device_id, sim_order: card.sim_order });
+        results.push({ phone: card.phone_number, device_id: dev.device_id, app_order: card.app_order });
       }
     }
   }
@@ -518,7 +518,7 @@ async function switchByPhone(phone, itemEl) {
     const resp = await fetch(`${API()}/api/sim/switch-by-phone/${phone}`);
     const data = await resp.json();
     if (data.ok) {
-      toast(`Switched ${data.device_id} to ${phone} (slot ${data.sim_order})`, 'success');
+      toast(`Switched ${data.device_id} to ${phone} (slot ${data.app_order})`, 'success');
     } else {
       toast(`Switch failed: ${data.error || 'unknown'}`, 'error');
     }
@@ -536,10 +536,20 @@ async function switchAllSim() {
   setSimBusy(true);
   toast(`Switching all to group ${order}...`, 'info');
   try {
-    const resp = await fetch(`${API()}/api/sim/switch-all`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sim_order: parseInt(order) }) });
+    const resp = await fetch(`${API()}/api/sim/switch-all`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app_order: parseInt(order) }) });
     const data = await resp.json();
-    if (data.ok) {
-      toast(`Group switch complete`, 'success');
+    if (data.results) {
+      const ok = data.success || 0;
+      const fail = data.failed || 0;
+      if (fail === 0) {
+        toast(`Switch complete: ${ok} OK`, 'success');
+      } else {
+        toast(`Switch done: ${ok} OK, ${fail} failed`, 'error');
+      }
+      // Each result as a notification
+      for (const r of data.results) {
+        notify(r.message, r.status === 'ok' ? 'success' : 'error');
+      }
     } else {
       toast(`Switch failed: ${data.error || 'unknown'}`, 'error');
     }
