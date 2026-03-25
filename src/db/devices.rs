@@ -219,4 +219,48 @@ impl Database {
 
         Ok(count)
     }
+
+    /// List all devices with their SIM cards (same format as device_phones.json)
+    pub async fn list_sim_devices(&self) -> Result<Vec<serde_json::Value>, AppError> {
+        let conn = self.conn.lock().await;
+
+        // Get all device_ids that have sim cards
+        let mut device_stmt = conn
+            .prepare("SELECT DISTINCT device_id FROM sim_cards ORDER BY device_id")
+            .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?;
+        let device_ids: Vec<String> = device_stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| AppError::Adb(format!("DB row error: {e}")))?;
+
+        let mut card_stmt = conn
+            .prepare("SELECT app_order, phone_number, app_lable, no, sim_no, sim_number FROM sim_cards WHERE device_id = ?1 ORDER BY app_order")
+            .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?;
+
+        let mut result = Vec::new();
+        for did in &device_ids {
+            let cards: Vec<serde_json::Value> = card_stmt
+                .query_map(params![did], |row| {
+                    Ok(serde_json::json!({
+                        "app_order": row.get::<_, i32>(0)?,
+                        "phone_number": row.get::<_, String>(1).unwrap_or_default(),
+                        "app_lable": row.get::<_, String>(2).unwrap_or_default(),
+                        "no": row.get::<_, String>(3).unwrap_or_default(),
+                        "sim_no": row.get::<_, String>(4).unwrap_or_default(),
+                        "sim_number": row.get::<_, String>(5).unwrap_or_default(),
+                    }))
+                })
+                .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| AppError::Adb(format!("DB row error: {e}")))?;
+
+            result.push(serde_json::json!({
+                "device_id": did,
+                "card": cards,
+            }));
+        }
+
+        Ok(result)
+    }
 }

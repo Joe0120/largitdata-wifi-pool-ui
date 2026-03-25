@@ -21,10 +21,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/sms/{phone}", get(get_sms))
 }
 
-// ---- SIM devices (from JSON, unchanged) ----
+// ---- SIM devices (from DB) ----
 
 async fn list_sim_devices(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let devices = state.sim.load_devices().await?;
+    let devices = state.db.list_sim_devices().await?;
     Ok(Json(devices))
 }
 
