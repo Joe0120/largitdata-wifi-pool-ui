@@ -43,8 +43,14 @@
 - **Swagger UI**：`/swagger` — 互動式 API 文件，可直接測試所有 endpoint
 - **OpenAPI JSON**：`/api/openapi.json` — OpenAPI 3.0.3 spec
 
+### 即時推播 (SSE)
+- Server-Sent Events：`GET /api/events`
+- 收到簡訊時自動推送到所有連線中的瀏覽器
+- 前端 `EventSource` 自動重連
+- 可擴展：未來加 SIM 切換完成、裝置離線等事件
+
 ### 通知系統
-- **Toast**：右上角彈出通知，3 秒自動消失
+- **Toast**：右上角彈出通知，3 秒自動消失（含 SSE 即時推播）
 - **通知紀錄**：🔔 按鈕展開歷史紀錄，可標記已讀/全部已讀/清除
 - 通知文字可選取複製
 - SIM switch 結果逐台顯示成功/失敗
@@ -125,8 +131,19 @@ journalctl --user -u largitdata-wifi-pool-ui -f    # 看 log
 
 | Method | Path | 說明 | Body |
 |--------|------|------|------|
-| POST | `/api/sms` | 手機轉發簡訊 | `{"device_serial":"xxx","phone_number":"886...","sender":"...","body":"...","received_at":"..."}` |
+| POST | `/api/sms` | 手機轉發簡訊（同時推播 SSE） | `{"device_serial":"xxx","phone_number":"886...","sender":"...","body":"...","received_at":"..."}` |
 | GET | `/api/sms/{phone}?limit=5` | 查詢指定號碼簡訊（預設最新 5 則） | - |
+
+### 即時推播
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/api/events` | SSE 連線，即時接收事件（簡訊等） |
+
+SSE event 格式：
+```json
+data: {"type":"Sms","payload":{"id":1,"device_serial":"R38M605CSEH","phone_number":"886933246524","sender":"0912345678","body":"Hello","received_at":"..."}}
+```
 
 ---
 

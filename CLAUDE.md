@@ -15,6 +15,7 @@
 | **ADB 通訊** | tokio::process::Command 呼叫 `adb` CLI |
 | **截圖** | atx-agent jsonrpc 取 JPEG → server 端 cache → client 讀 cache |
 | **SIM 切換** | subprocess 呼叫 Python 腳本 (uiautomator2 操控 STK app) |
+| **即時推播** | SSE (Server-Sent Events) + tokio::broadcast pub/sub |
 | **scrcpy** | 內建但目前前端未啟用（需要 jmuxer 或 WebCodecs） |
 | **HTTP client** | reqwest (呼叫 atx-agent) |
 | **序列化** | serde / serde_json |
@@ -29,6 +30,7 @@ src/
 │                                啟動時：import JSON → start cache polling → setup adb reverse
 ├── config.rs                  # 環境變數設定 (PORT, ADB_PATH, DB_PATH 等)
 ├── error.rs                   # AppError enum → axum IntoResponse (JSON error)
+├── events.rs                  # Event enum (Sms, 未來可加更多) for broadcast
 ├── screenshot_cache.rs        # ScreenshotCache: 背景 task 並行截圖 + in-memory cache
 │                                - active flag: 沒人看時不截圖
 │                                - 每輪對所有裝置並行截圖，各自完成即更新 cache
@@ -52,6 +54,8 @@ src/
 │   ├── sim.rs                 # /api/sim/* + /api/sms/* handlers
 │   │                            - switch 成功後自動更新 DB
 │   │                            - sync 解析 Python 輸出寫入 DB
+│   │                            - receive_sms broadcast SSE event
+│   ├── events.rs              # GET /api/events SSE endpoint
 │   ├── stream.rs              # WS /api/devices/{serial}/stream (scrcpy)
 │   └── frontend.rs            # rust-embed 靜態檔案服務
 ├── scrcpy/
@@ -173,6 +177,25 @@ mouseToRatio(e, img)      // 滑鼠 → 0~1 比例座標
 - 每 200ms 發一批 5 台（避免 Chrome 6 連線限制）
 - 操作後立即 + 800ms 各截一次（actionRefresh）
 - `screenshotInFlight` Set 避免同台重複請求
+
+### SSE 即時推播
+```
+AppState.events: tokio::broadcast::Sender<Event>  (channel capacity 100)
+
+POST /api/sms
+  → insert DB
+  → state.events.send(Event::Sms(...))  // 失敗不影響（沒人訂閱時）
+
+GET /api/events (SSE)
+  → state.events.subscribe()
+  → async_stream loop: recv → yield SseEvent
+  → KeepAlive::default() 自動 ping
+
+前端
+  → new EventSource('/api/events')  // 自動重連
+  → onmessage → parse JSON → toast
+```
+擴展：加新事件只需在 `events::Event` enum 加 variant，`receive_sms` 同理在對應 handler 加 `send()`。
 
 ## 外部依賴
 
