@@ -312,6 +312,20 @@ async fn receive_sms(
         }
     }
 
+    // If we have device_id but no phone_number, lookup current_phone from devices table
+    if body.device_id.is_some() && body.phone_number.is_none() {
+        if let Some(did) = &body.device_id {
+            let conn = state.db.conn().lock().await;
+            let phone = conn.query_row(
+                "SELECT current_phone FROM devices WHERE device_id = ?1",
+                rusqlite::params![did],
+                |row| row.get::<_, String>(0),
+            ).ok();
+            drop(conn);
+            body.phone_number = phone;
+        }
+    }
+
     let id = state.db.insert_sms(&body).await?;
 
     // Broadcast to all SSE clients
