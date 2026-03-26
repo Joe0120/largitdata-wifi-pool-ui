@@ -74,4 +74,40 @@ impl Database {
 
         Ok(rows)
     }
+
+    /// Get SMS by device_id, newest first
+    pub async fn get_sms_by_device(
+        &self,
+        device_id: &str,
+        limit: u32,
+    ) -> Result<Vec<SmsRow>, AppError> {
+        let conn = self.conn.lock().await;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, device_id, phone_number, sender, body, received_at, created_at
+                 FROM sms_messages
+                 WHERE device_id = ?1
+                 ORDER BY id DESC
+                 LIMIT ?2",
+            )
+            .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?;
+
+        let rows = stmt
+            .query_map(params![device_id, limit], |row| {
+                Ok(SmsRow {
+                    id: row.get(0)?,
+                    device_id: row.get(1)?,
+                    phone_number: row.get(2)?,
+                    sender: row.get(3)?,
+                    body: row.get(4)?,
+                    received_at: row.get(5)?,
+                    created_at: row.get(6)?,
+                })
+            })
+            .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| AppError::Adb(format!("DB row error: {e}")))?;
+
+        Ok(rows)
+    }
 }

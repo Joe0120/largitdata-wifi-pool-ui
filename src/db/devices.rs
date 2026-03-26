@@ -9,6 +9,7 @@ pub struct DeviceRow {
     pub device_id: String,
     pub model: Option<String>,
     pub product: Option<String>,
+    pub mobile_tag: Option<String>,
     pub current_phone: Option<String>,
     pub current_app_order: Option<i32>,
     pub last_checked_at: Option<String>,
@@ -47,7 +48,7 @@ impl Database {
     pub async fn list_devices(&self) -> Result<Vec<DeviceRow>, AppError> {
         let conn = self.conn.lock().await;
         let mut stmt = conn
-            .prepare("SELECT device_id, model, product, current_phone, current_app_order, last_checked_at FROM devices ORDER BY device_id")
+            .prepare("SELECT device_id, model, product, mobile_tag, current_phone, current_app_order, last_checked_at FROM devices ORDER BY device_id")
             .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?;
 
         let rows = stmt
@@ -56,9 +57,10 @@ impl Database {
                     device_id: row.get(0)?,
                     model: row.get(1)?,
                     product: row.get(2)?,
-                    current_phone: row.get(3)?,
-                    current_app_order: row.get(4)?,
-                    last_checked_at: row.get(5)?,
+                    mobile_tag: row.get(3)?,
+                    current_phone: row.get(4)?,
+                    current_app_order: row.get(5)?,
+                    last_checked_at: row.get(6)?,
                 })
             })
             .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?
@@ -74,16 +76,17 @@ impl Database {
 
         let device = conn
             .query_row(
-                "SELECT device_id, model, product, current_phone, current_app_order, last_checked_at FROM devices WHERE device_id = ?1",
+                "SELECT device_id, model, product, mobile_tag, current_phone, current_app_order, last_checked_at FROM devices WHERE device_id = ?1",
                 params![device_id],
                 |row| {
                     Ok(DeviceRow {
                         device_id: row.get(0)?,
                         model: row.get(1)?,
                         product: row.get(2)?,
-                        current_phone: row.get(3)?,
-                        current_app_order: row.get(4)?,
-                        last_checked_at: row.get(5)?,
+                        mobile_tag: row.get(3)?,
+                        current_phone: row.get(4)?,
+                        current_app_order: row.get(5)?,
+                        last_checked_at: row.get(6)?,
                     })
                 },
             )
@@ -200,16 +203,19 @@ impl Database {
                     let no_str = if let Some(s) = card["no"].as_str() { s.to_string() } else if let Some(n) = card["no"].as_i64() { n.to_string() } else { String::new() };
                     let sim_no_str = if let Some(s) = card["sim_no"].as_str() { s.to_string() } else if let Some(n) = card["sim_no"].as_i64() { n.to_string() } else { String::new() };
 
+                    let available = card["available"].as_bool().unwrap_or(true) as i32;
+
                     conn.execute(
-                        "INSERT INTO sim_cards (device_id, app_order, phone_number, app_lable, no, sim_no, sim_number)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                        "INSERT INTO sim_cards (device_id, app_order, phone_number, app_lable, no, sim_no, sim_number, available)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
                          ON CONFLICT(device_id, app_order) DO UPDATE SET
                            phone_number = excluded.phone_number,
                            app_lable = excluded.app_lable,
                            no = excluded.no,
                            sim_no = excluded.sim_no,
-                           sim_number = excluded.sim_number",
-                        params![device_id, app_order, phone_number, app_lable, no_str, sim_no_str, sim_number],
+                           sim_number = excluded.sim_number,
+                           available = excluded.available",
+                        params![device_id, app_order, phone_number, app_lable, no_str, sim_no_str, sim_number, available],
                     )
                     .map_err(|e| AppError::Adb(format!("DB insert sim_card failed: {e}")))?;
                     count += 1;
@@ -218,6 +224,30 @@ impl Database {
         }
 
         Ok(count)
+    }
+
+    /// Set mobile_tag for a device
+    pub async fn set_mobile_tag(&self, device_id: &str, mobile_tag: &str) -> Result<(), AppError> {
+        let conn = self.conn.lock().await;
+        conn.execute(
+            "UPDATE devices SET mobile_tag = ?1 WHERE device_id = ?2",
+            params![mobile_tag, device_id],
+        )
+        .map_err(|e| AppError::Adb(format!("DB update failed: {e}")))?;
+        Ok(())
+    }
+
+    /// Lookup device_id by mobile_tag
+    pub async fn get_device_by_mobile_tag(&self, tag: &str) -> Result<Option<String>, AppError> {
+        let conn = self.conn.lock().await;
+        let result = conn
+            .query_row(
+                "SELECT device_id FROM devices WHERE mobile_tag = ?1",
+                params![tag],
+                |row| row.get::<_, String>(0),
+            )
+            .ok();
+        Ok(result)
     }
 
     /// List all devices with their SIM cards (same format as device_phones.json)

@@ -58,6 +58,23 @@ async fn main() {
                 Ok(n) => tracing::info!("Imported {n} SIM cards into database"),
                 Err(e) => tracing::warn!("Failed to import JSON: {e}"),
             }
+
+            // Seed mobile_tag mappings
+            let tags = [
+                ("03157df34dc0c916", "mobile32"),
+                ("03157df3c91de513", "mobile34"),
+                ("04157df469484c1d", "mobile36"),
+                ("05157df509b2de07", "mobile38"),
+                ("05157df51196c812", "mobile39"),
+                ("05157df571758238", "mobile40"),
+                ("06157df6aaf8e622", "mobile43"),
+                ("06157df6ebcb2f23", "mobile44"),
+                ("1015fa68c0cf3303", "mobile47"),
+            ];
+            for (did, tag) in &tags {
+                let _ = db.set_mobile_tag(did, tag).await;
+            }
+            tracing::info!("Seeded mobile_tag mappings");
         }
     }
 

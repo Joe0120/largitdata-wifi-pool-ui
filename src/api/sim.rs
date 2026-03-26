@@ -19,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/sim/switch-by-phone/{phone}", get(switch_by_phone))
         .route("/api/sms", post(receive_sms))
         .route("/api/sms/{phone}", get(get_sms))
+        .route("/api/sms/device/{device_id}", get(get_sms_by_device))
 }
 
 // ---- SIM devices (from DB) ----
@@ -269,9 +270,44 @@ async fn receive_sms(
                     }
                 }
 
+                // Fallback: if Receiver was empty, try mobile_tag (line after Receiver)
+                if body.device_id.is_none() && recv_idx + 1 < lines.len() {
+                    let mobile_tag = lines[recv_idx + 1].trim();
+                    if mobile_tag.starts_with("mobile") {
+                        if let Ok(Some(device_id)) = state.db.get_device_by_mobile_tag(mobile_tag).await {
+                            body.device_id = Some(device_id);
+                        }
+                    }
+                }
+
+                // Also try: if no Receiver line at all but has mobile tag
+                // (handled below after this block)
+
                 // Store parsed content as body, keep raw in raw_body
                 body.raw_body = body.body.clone();
                 body.body = Some(content);
+            } else {
+                // No "Receiver:" line — try format: sender\ncontent\nmobileXX\ndatetime\ngroup
+                if let Some(tag_idx) = lines.iter().position(|l| l.trim().starts_with("mobile")) {
+                    if body.sender.is_none() {
+                        body.sender = Some(lines[0].trim().to_string());
+                    }
+                    let content = lines[1..tag_idx].join("\n");
+                    let mobile_tag = lines[tag_idx].trim();
+
+                    // datetime = next line after mobile tag
+                    if tag_idx + 1 < lines.len() && body.received_at.is_none() {
+                        body.received_at = Some(lines[tag_idx + 1].trim().to_string());
+                    }
+
+                    // Lookup device_id by mobile_tag
+                    if let Ok(Some(device_id)) = state.db.get_device_by_mobile_tag(mobile_tag).await {
+                        body.device_id = Some(device_id);
+                    }
+
+                    body.raw_body = body.body.clone();
+                    body.body = Some(content);
+                }
             }
         }
     }
@@ -303,5 +339,15 @@ async fn get_sms(
 ) -> Result<impl IntoResponse, AppError> {
     let limit = query.limit.unwrap_or(5);
     let messages = state.db.get_sms_by_phone(&phone, limit).await?;
+    Ok(Json(messages))
+}
+
+async fn get_sms_by_device(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+    Query(query): Query<SmsQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let limit = query.limit.unwrap_or(5);
+    let messages = state.db.get_sms_by_device(&device_id, limit).await?;
     Ok(Json(messages))
 }
