@@ -617,10 +617,9 @@ function connectSSE() {
       const data = JSON.parse(e.data);
       if (data.type === 'Sms') {
         const sms = data.payload;
-        const from = sms.sender || 'unknown';
         const body = sms.body || '';
-        const phone = sms.phone_number || sms.device_id;
-        toast(`SMS ${phone} ← ${from}: ${body}`, 'info');
+        const phone = sms.phone_number || sms.device_id || 'unknown';
+        toast(`SMS ${phone}: ${body}`, 'info');
       }
     } catch(err) {}
   };

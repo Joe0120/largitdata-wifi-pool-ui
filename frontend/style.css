@@ -213,6 +213,7 @@ select:disabled { opacity: 0.4; }
   pointer-events: auto; max-width: 360px;
   animation: toastIn 0.2s ease-out;
   border-left: 3px solid #533483;
+  user-select: text; cursor: text;
 }
 .toast.success { border-left-color: #0d904f; }
 .toast.error { border-left-color: #e94560; }
