@@ -265,7 +265,7 @@ impl Database {
             .map_err(|e| AppError::Adb(format!("DB row error: {e}")))?;
 
         let mut card_stmt = conn
-            .prepare("SELECT app_order, phone_number, app_lable, no, sim_no, sim_number FROM sim_cards WHERE device_id = ?1 ORDER BY app_order")
+            .prepare("SELECT app_order, phone_number, app_lable, no, sim_no, sim_number, available FROM sim_cards WHERE device_id = ?1 ORDER BY app_order")
             .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?;
 
         let mut result = Vec::new();
@@ -279,6 +279,7 @@ impl Database {
                         "no": row.get::<_, String>(3).unwrap_or_default(),
                         "sim_no": row.get::<_, String>(4).unwrap_or_default(),
                         "sim_number": row.get::<_, String>(5).unwrap_or_default(),
+                        "available": row.get::<_, i32>(6).unwrap_or(1) == 1,
                     }))
                 })
                 .map_err(|e| AppError::Adb(format!("DB query failed: {e}")))?
